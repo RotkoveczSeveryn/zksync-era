@@ -13,6 +13,58 @@
     },
     "query": "UPDATE proof_generation_details SET status=$1, updated_at = now() WHERE l1_batch_number = $2"
   },
+  "00226c81a8bb7bc56ccce6d65247e5b8cd8803179e50cb93fefbaca81e98315e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "key",
+          "ordinal": 0,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "value",
+          "ordinal": 1,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "address",
+          "ordinal": 2,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "miniblock_number",
+          "ordinal": 3,
+          "type_info": "Int8"
+        },
+        {
+          "name": "l1_batch_number",
+          "ordinal": 4,
+          "type_info": "Int8"
+        },
+        {
+          "name": "index",
+          "ordinal": 5,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n            SELECT storage_logs.key,\n                   storage_logs.value,\n                   storage_logs.address,\n                   storage_logs.miniblock_number,\n                   initial_writes.l1_batch_number,\n                   initial_writes.index\n            FROM (SELECT hashed_key,\n                         max(ARRAY [miniblock_number, operation_number]::int[]) AS op\n                  FROM storage_logs\n                  WHERE miniblock_number <= $1\n                  GROUP BY hashed_key\n                  ORDER BY hashed_key) AS keys\n                     INNER JOIN storage_logs ON keys.hashed_key = storage_logs.hashed_key\n                AND storage_logs.miniblock_number = keys.op[1]\n                AND storage_logs.operation_number = keys.op[2]\n                     INNER JOIN initial_writes ON keys.hashed_key = initial_writes.hashed_key\n            WHERE miniblock_number <= $1\n            ORDER BY storage_logs.hashed_key\n            LIMIT $2 OFFSET $3;\n             "
+  },
   "00bd80fd83aff559d8d9232c2e98a12a1dd2c8f31792cd915e2cf11f28e583b7": {
     "describe": {
       "columns": [
@@ -6028,58 +6080,6 @@
       }
     },
     "query": "INSERT INTO compiler_versions (version, compiler, created_at, updated_at) SELECT u.version, $2, now(), now() FROM UNNEST($1::text[]) AS u(version) ON CONFLICT (version, compiler) DO NOTHING"
-  },
-  "6fbed24f9ba45f083b00ebd80b02b33915a04c7609bcaaedd26a133d5fa420df": {
-    "describe": {
-      "columns": [
-        {
-          "name": "key",
-          "ordinal": 0,
-          "type_info": "Bytea"
-        },
-        {
-          "name": "value",
-          "ordinal": 1,
-          "type_info": "Bytea"
-        },
-        {
-          "name": "address",
-          "ordinal": 2,
-          "type_info": "Bytea"
-        },
-        {
-          "name": "miniblock_number",
-          "ordinal": 3,
-          "type_info": "Int8"
-        },
-        {
-          "name": "l1_batch_number",
-          "ordinal": 4,
-          "type_info": "Int8"
-        },
-        {
-          "name": "index",
-          "ordinal": 5,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Int8",
-          "Int8"
-        ]
-      }
-    },
-    "query": "\n            SELECT storage_logs.key,\n                   storage_logs.value,\n                   storage_logs.address,\n                   storage_logs.miniblock_number,\n                   initial_writes.l1_batch_number,\n                   initial_writes.index\n            FROM (SELECT hashed_key,\n                         max(ARRAY [miniblock_number, operation_number]::int[]) AS op\n                  FROM storage_logs\n                  WHERE miniblock_number <= $1\n                  GROUP BY hashed_key\n                  ORDER BY hashed_key) AS keys\n                     INNER JOIN storage_logs ON keys.hashed_key = storage_logs.hashed_key\n                AND storage_logs.miniblock_number = keys.op[1]\n                AND storage_logs.operation_number = keys.op[2]\n                     INNER JOIN initial_writes ON keys.hashed_key = initial_writes.hashed_key\n            WHERE miniblock_number <= $1\n            ORDER BY ARRAY(\n                 SELECT get_byte(storage_logs.hashed_key, 32 - generate_series)\n                 FROM generate_series(1, 32)\n             )\n            LIMIT $2 OFFSET $3;\n             "
   },
   "6ffd22b0590341c38ce3957dccdb5a4edf47fb558bc64e4df08897a0c72dbf23": {
     "describe": {
